@@ -74,6 +74,10 @@ class ConnectFour(object):
 
             self.obs[-i, action] = 1
 
+            # TODO :  -> ADD THE OPPONENT AGENT
+
+            # TODO : COMPUTE THE REWARD AND IF THE GAME IS OVER
+            
             reward = 1 / 42
 
             done = False
