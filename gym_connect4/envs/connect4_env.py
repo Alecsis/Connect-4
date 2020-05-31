@@ -4,4 +4,15 @@ from gym.utils import seeding
 
 
 class Connect4Env(gym.Env):
-    pass
+    metadata = {'render.modes': ['human']}
+    
+    def __init__(self):
+        pass
+    def step(self, action):
+        pass
+    def reset(self):
+        pass
+    def render(self, mode='human'):
+        pass
+    def close(self):
+        pass
