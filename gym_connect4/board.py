@@ -52,7 +52,7 @@ class ConnectFour(Connect4Env):
         """
         Visualize in the console or graphically the current state
         """
-        print("+---" * 7 + '+')
+        print("+---" * self.columns + '+')
         for row in range(self.rows):
             print('| ' + ' | '.join(list(map(str, list(self.obs[row, ::])))) + ' |')
             print("+---" * self.columns + '+')
@@ -133,6 +133,8 @@ class ConnectFour(Connect4Env):
             done, token_winner = self.check_over()
             if token_winner == 1:
                 reward = 1
+            elif done:
+                reward = 0
             else:
                 reward = 1 / 42
             info = {}
