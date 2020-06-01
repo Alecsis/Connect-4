@@ -23,7 +23,8 @@ if __name__ == "__main__":
 
     # Final render
     print("[+] Done.")
-    print(info)
+    print("Infos: ", info)
+    print("Final board: ")
     env.render()
 
     # Close environment
