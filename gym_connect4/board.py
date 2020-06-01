@@ -1,6 +1,7 @@
 import numpy as np
 from gym import spaces
 from gym_connect4.envs.connect4_env import Connect4Env
+from gym_connect4.bankAgent import RandomAgent, OneStepAgent
 
 
 class ConnectFour(Connect4Env):
@@ -54,7 +55,8 @@ class ConnectFour(Connect4Env):
         """
         print("+---" * self.columns + '+')
         for row in range(self.rows):
-            print('| ' + ' | '.join(list(map(str, list(self.obs[row, ::])))) + ' |')
+            print('| ' + ' | '.join(list(map(lambda x: '.' if x == 0 else ('o' if x == 1 else 'x'),
+                                             list(self.obs[row, ::])))) + ' |')
             print("+---" * self.columns + '+')
 
     def check_line(self, align):
@@ -84,9 +86,9 @@ class ConnectFour(Connect4Env):
         """
         no_token = 0
         if no_token in self.obs:
-            return True
-        else:
             return False
+        else:
+            return True
 
     def check_over(self):
         """ Check if the game is over """
@@ -104,10 +106,14 @@ class ConnectFour(Connect4Env):
 
         aligns = a1 + a2 + a3 + a4
 
-        done, token_winner = any([self.check_line(align) for align in aligns])
+        done = any([self.check_line(align)[0] for align in aligns])
+
+        if done:
+            token_winner = 1
 
         if not done:
             done = self.check_drow()
+            token_winner = 0
         return done, token_winner
 
     def play(self, action, token):
@@ -127,6 +133,8 @@ class ConnectFour(Connect4Env):
         """
 
         # Check if agent's move is valid
+
+        # TODO : BLOCK ACTION IF THE GAME IS OVER
 
         if self.is_valid(action):  # Play the move
             self.play(action, token=1)
@@ -152,3 +160,13 @@ class ConnectFour(Connect4Env):
                 reward = 0
 
         return self.obs, reward, done, info
+
+
+if __name__ == '__main__':
+    agent_opp = RandomAgent()
+    env = ConnectFour(agent_opp)
+    env.step(0)
+    env.step(0)
+    env.step(0)
+    env.step(0)
+    env.render()

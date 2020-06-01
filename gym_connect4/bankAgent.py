@@ -20,15 +20,14 @@ class OneStepAgent(Agent):
         record = -1e7
         for move in valid_moves:
             next_board = board.copy()
-            i = 0
-            while next_board[i, move] == 0:
-                i += 1
-            i -= 1
+            i = 5
+            while next_board[i, move] != 0:
+                i -= 1
             next_board[i, move] = token
-            score_p = self.evaluate_heuristic(self, next_board)
+            score_p = self.evaluate_heuristic(next_board)
             next_board[i, move] = - token
-            score_n = self.evaluate_heuristic(self, next_board)
-            total = score_p - score_n
+            score_n = self.evaluate_heuristic(next_board)
+            total = score_p - 100*score_n
             if total > record:
                 best_move = move
                 record = total
@@ -36,6 +35,7 @@ class OneStepAgent(Agent):
 
     def evaluate(self, align, token):
         score = 0
+        sign = 0
         adv_token = - token
         for i in range(len(align)-4):
             window = align[i:i+4]
