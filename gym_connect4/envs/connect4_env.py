@@ -1,26 +1,29 @@
-import gym
-from gym import error, spaces, utils
-from gym.utils import seeding
+from gym import spaces
 import numpy as np
+from agents.bankAgent import RandomAgent
 
 
 class Connect4Env(object):
 
-    def __init__(self):
-
+    def __init__(self, agent_opp):
+        self.agent_opp = agent_opp
         # Board dimension
         self.rows = 6
         self.columns = 7
+        self.done = False
+
+        # nb_empty indicate the number of available space per column
+        self.nb_empty = [self.rows] * self.columns
 
         # Save the board state
-        # Learn about spaces here: http://gym.openai.com/docs/#spaces
-        # 0: no token
-        # 1: agent1 token
-        # -1: agent2 token
-        self.observation_space = self._new_observation_space()
+        self.obs = np.zeros((self.rows, self.columns), dtype=int)
 
-        # Save the action space
+        # Learn about spaces here: http://gym.openai.com/docs/#spaces
         self.action_space = spaces.Discrete(self.columns)
+
+        self.observation_space = spaces.Box(low=-1, high=1,
+                                            shape=(self.rows, self.columns),
+                                            dtype=np.int)
 
         # Tuple corresponding to the min and max possible rewards
         self.reward_range = (-10, 1)
@@ -29,44 +32,98 @@ class Connect4Env(object):
         self.spec = None
         self.metadata = None
 
-    def reset(self) -> spaces.Box:
+    def reset(self):
+
         """
         Reinitialize the environment to the initial state
 
         :return: state
         """
 
-        #self.obs = np.zeros((self.rows, self.columns), dtype=int)
-        self.observation_space = self._new_observation_space()
-        return self.observation_space
+        self.obs = np.zeros((self.rows, self.columns), dtype=int)
+        self.nb_empty = [self.rows] * self.columns
 
-    def _new_observation_space(self) -> spaces.Box:
-        """ Returns the state Box space. """
-        # Low bound is excluded
-        return spaces.Box(low=-1, high=1,
-                          shape=(self.rows, self.columns),
-                          dtype=np.int)
+    def set_opponent(self, agent):
+        self.agent_opp = agent
 
-    def is_action_valid(self, action: int) -> bool:
+    def is_valid(self, action) -> bool:
         """ If we have a space then the move is valid"""
-        try:
-            if self.observation_space[0, action] == 0:
-                return True
-        except:
-            pass
-        return False
+        return self.nb_empty[action] != 0
 
-    def draw(self):
+    def render(self):
         """
         Visualize in the console or graphically the current state
         """
-        print("+---" * 7 + '+')
+        print("+---" * self.columns + '+')
         for row in range(self.rows):
-            print(
-                '| ' + ' | '.join(list(map(str, list(self.observation_space[row, ::])))) + ' |')
+            print('| ' + ' | '.join(list(map(lambda x: '.' if x == 0 else ('o' if x == 1 else 'x'),
+                                             list(self.obs[row, ::])))) + ' |')
             print("+---" * self.columns + '+')
 
-    def step(self, action: int) -> (spaces.Box, int, bool, dict):
+    def check_line(self, align):
+        no_token = 0
+        token_play1 = 1
+        token_play2 = -1
+        count_play1, count_play2 = 0, 0
+        for token in align:
+            if token == no_token:
+                count_play1, count_play2 = 0, 0
+            elif token == token_play1:
+                count_play1 += 1
+                count_play2 = 0
+            else:
+                count_play2 += 1
+                count_play1 = 0
+            if count_play2 == 4:
+                return True, token_play2
+            if count_play1 == 4:
+                return True, token_play1
+        return False, no_token
+
+    def check_drow(self):
+        """
+        Check if the games ended by a drow
+        :return: Bool
+        """
+        no_token = 0
+        if no_token in self.obs:
+            return False
+        else:
+            return True
+
+    def check_over(self):
+        """ Check if the game is over """
+        # DIRECTION NORTH EAST
+        a1 = [self.obs[::-1, :].diagonal(i) for i in range(-self.rows + 4, self.columns - 3)]
+
+        # DIRECTION EAST
+        a2 = [self.obs[i, :] for i in range(self.rows)]
+
+        # DIRECTION SOUTH EST
+        a3 = [self.obs.diagonal(i) for i in range(-self.rows + 4, self.columns - 3)]
+
+        # DIRECTION SOUTH
+        a4 = [self.obs[:, j] for j in range(self.columns)]
+
+        aligns = a1 + a2 + a3 + a4
+
+        done = any([self.check_line(align)[0] for align in aligns])
+
+        if done:
+            token_winner = 1
+
+        if not done:
+            done = self.check_drow()
+            token_winner = 0
+        return done, token_winner
+
+    def play(self, action, token):
+        if self.is_valid(action):
+            self.nb_empty[action] -= 1
+            rowidx = self.nb_empty[action]
+            self.obs[rowidx, action] = token
+
+    def step(self, action: int) -> (np.ndarray, int, bool, dict):
         """
         One can make a step on the environment and obtain its reaction:
         - the new state
@@ -78,41 +135,39 @@ class Connect4Env(object):
 
         # Check if agent's move is valid
 
-        valid_action = self.is_action_valid(action)
-
-        if valid_action:  # Play the move
-
-            i = 1
-
-            while self.observation_space[-i, action] != 0:
-                i += 1
-
-            self.observation_space[-i, action] = 1
-
-            # TODO :  -> ADD THE OPPONENT AGENT
-
-            # TODO : COMPUTE THE REWARD AND IF THE GAME IS OVER
-
-            reward = 1 / 42
-
-            done = False
-
+        if self.is_valid(action) and not self.done:  # Play the move
+            self.play(action, token=1)
+            done, token_winner = self.check_over()
+            if token_winner == 1:
+                reward = 1
+            elif done:
+                reward = 0
+            else:
+                reward = 1 / 42
             info = {}
 
         else:  # End the game and penalize agent
             reward, done, info = -10, True, {}
 
+        if not done:
+            action_opp = self.agent_opp.action(self.obs, self.columns)
+            self.play(action_opp, token=-1)
+            done, token_winner = self.check_over()
+            if token_winner == -1:
+                reward = -1
+            elif done:
+                reward = 0
+
+        self.done = done
+
         return self.obs, reward, done, info
 
 
-if __name__ == "__main__":
-    env = Connect4Env()
-
-    print("[.] Testing Connect4Env Environment")
-    print("\t[.] Action space")
-    print("Action space:", env.action_space)
-    print("Action sample:", env.action_space.sample())
-    print("\t[.] Observation space")
-    print("Observation space:", env.observation_space)
-    print("Observation sample:\n", env.observation_space.sample())
-    print("[.] Tests done.")
+if __name__ == '__main__':
+    agent_opp = RandomAgent()
+    env = Connect4Env(agent_opp)
+    env.reset()
+    done = False
+    while not done:
+        obs, reward, done, info = env.step(env.action_space.sample())
+        env.render()
