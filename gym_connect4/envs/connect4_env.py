@@ -42,6 +42,7 @@ class Connect4Env(object):
 
         self.obs = np.zeros((self.rows, self.columns), dtype=int)
         self.nb_empty = [self.rows] * self.columns
+        self.done = False
 
     def set_opponent(self, agent):
         self.agent_opp = agent
