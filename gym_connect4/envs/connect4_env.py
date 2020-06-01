@@ -43,7 +43,7 @@ class Connect4Env(object):
     def _new_observation_space(self) -> spaces.Box:
         """ Returns the state Box space. """
         # Low bound is excluded
-        return spaces.Box(low=-2, high=1,
+        return spaces.Box(low=-1, high=1,
                           shape=(self.rows, self.columns),
                           dtype=np.int)
 
