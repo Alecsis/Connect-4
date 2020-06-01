@@ -1,5 +1,6 @@
 from gym_connect4.agent import Agent
 import random
+import numpy as np
 
 
 class RandomAgent(Agent):
