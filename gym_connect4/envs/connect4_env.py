@@ -5,8 +5,7 @@ from agents.random_agent import RandomAgent
 
 class Connect4Env(object):
 
-    def __init__(self, agent_opp):
-        self.agent_opp = agent_opp
+    def __init__(self):
         # Board dimension
         self.rows = 6
         self.columns = 7
@@ -28,18 +27,20 @@ class Connect4Env(object):
         # Tuple corresponding to the min and max possible rewards
         self.reward_range = (-10, 1)
 
+        # Random agent
+        self.agent_opp = RandomAgent(self.action_space, self.observation_space)
+
         # StableBaselines throws error if these are not defined
         self.spec = None
         self.metadata = None
+        self.unwrapped = None
 
     def reset(self):
-
         """
         Reinitialize the environment to the initial state
 
         :return: state
         """
-
         self.obs = np.zeros((self.rows, self.columns), dtype=int)
         self.nb_empty = [self.rows] * self.columns
 
@@ -80,7 +81,7 @@ class Connect4Env(object):
                 return True, token_play1
         return False, no_token
 
-    def check_drow(self):
+    def check_draw(self):
         """
         Check if the games ended by a drow
         :return: Bool
@@ -95,26 +96,21 @@ class Connect4Env(object):
         """ Check if the game is over """
         # DIRECTION NORTH EAST
         a1 = [self.obs[::-1, :].diagonal(i) for i in range(-self.rows + 4, self.columns - 3)]
-
         # DIRECTION EAST
         a2 = [self.obs[i, :] for i in range(self.rows)]
-
         # DIRECTION SOUTH EST
         a3 = [self.obs.diagonal(i) for i in range(-self.rows + 4, self.columns - 3)]
-
         # DIRECTION SOUTH
         a4 = [self.obs[:, j] for j in range(self.columns)]
 
         aligns = a1 + a2 + a3 + a4
-
         done = any([self.check_line(align)[0] for align in aligns])
-
         if done:
             token_winner = 1
-
-        if not done:
-            done = self.check_drow()
+        else:
+            done = self.check_draw()
             token_winner = 0
+
         return done, token_winner
 
     def play(self, action, token):
@@ -134,7 +130,6 @@ class Connect4Env(object):
         """
 
         # Check if agent's move is valid
-
         if self.is_valid(action) and not self.done:  # Play the move
             self.play(action, token=1)
             done, token_winner = self.check_over()
@@ -145,12 +140,11 @@ class Connect4Env(object):
             else:
                 reward = 1 / 42
             info = {}
-
         else:  # End the game and penalize agent
             reward, done, info = -10, True, {}
 
         if not done:
-            action_opp = self.agent_opp.action(self.obs)
+            action_opp = self.agent_opp.get_action(self.obs)
             self.play(action_opp, token=-1)
             done, token_winner = self.check_over()
             if token_winner == -1:
@@ -159,15 +153,16 @@ class Connect4Env(object):
                 reward = 0
 
         self.done = done
-
         return self.obs, reward, done, info
 
 
 if __name__ == '__main__':
-    agent_opp = RandomAgent()
-    env = Connect4Env(agent_opp)
-    env.reset()
+    # Init environment
+    env = Connect4Env()
+    obs = env.reset()
     done = False
+
+    # Sample actions until game over
     while not done:
         obs, reward, done, info = env.step(env.action_space.sample())
-        env.render()
+    env.render()
