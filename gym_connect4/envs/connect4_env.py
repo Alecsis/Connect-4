@@ -1,6 +1,6 @@
 from gym import spaces
 import numpy as np
-from agents.bankAgent import RandomAgent
+from agents.random_agent import RandomAgent
 
 
 class Connect4Env(object):
@@ -150,7 +150,7 @@ class Connect4Env(object):
             reward, done, info = -10, True, {}
 
         if not done:
-            action_opp = self.agent_opp.action(self.obs, self.columns)
+            action_opp = self.agent_opp.action(self.obs)
             self.play(action_opp, token=-1)
             done, token_winner = self.check_over()
             if token_winner == -1:

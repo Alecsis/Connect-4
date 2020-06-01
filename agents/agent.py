@@ -1,3 +1,3 @@
 class Agent(object):
-    def action(self, board, columns):
+    def action(self, obs) -> int:
         pass
