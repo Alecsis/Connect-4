@@ -2,6 +2,7 @@ import numpy as np
 from gym import spaces
 from gym_connect4.envs.connect4_env import Connect4Env
 from gym_connect4.bankAgent import RandomAgent, OneStepAgent
+import random
 
 
 class ConnectFour(Connect4Env):
@@ -11,6 +12,7 @@ class ConnectFour(Connect4Env):
         self.agent_opp = agent_opp
         self.rows = 6
         self.columns = 7
+        self.done = False
 
         # nb_empty indicate the number of available space per column
         self.nb_empty = [self.rows] * self.columns
@@ -134,9 +136,7 @@ class ConnectFour(Connect4Env):
 
         # Check if agent's move is valid
 
-        # TODO : BLOCK ACTION IF THE GAME IS OVER
-
-        if self.is_valid(action):  # Play the move
+        if self.is_valid(action) and not self.done:  # Play the move
             self.play(action, token=1)
             done, token_winner = self.check_over()
             if token_winner == 1:
@@ -159,14 +159,15 @@ class ConnectFour(Connect4Env):
             elif done:
                 reward = 0
 
+        self.done = done
+
         return self.obs, reward, done, info
 
 
 if __name__ == '__main__':
     agent_opp = RandomAgent()
     env = ConnectFour(agent_opp)
-    env.step(0)
-    env.step(0)
-    env.step(0)
-    env.step(0)
+    for k in range(42):
+        env.step(random.randint(0,6))
+        env.render()
     env.render()
