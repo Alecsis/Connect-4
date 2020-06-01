@@ -1,4 +1,4 @@
-from gym_connect4.agent import Agent
+from agents.agent import Agent
 import random
 import numpy as np
 

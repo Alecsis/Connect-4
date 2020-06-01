@@ -1,7 +1,7 @@
 import numpy as np
 from gym import spaces
 from gym_connect4.envs.connect4_env import Connect4Env
-from gym_connect4.bankAgent import RandomAgent, OneStepAgent
+from agents.bankAgent import RandomAgent, OneStepAgent
 import random
 
 
@@ -167,7 +167,8 @@ class ConnectFour(Connect4Env):
 if __name__ == '__main__':
     agent_opp = RandomAgent()
     env = ConnectFour(agent_opp)
-    for k in range(42):
-        env.step(random.randint(0,6))
+    obs = env.reset()
+    done = False
+    while not done:
+        obs, reward, done, info = env.step(env.action_space.sample())
         env.render()
-    env.render()
