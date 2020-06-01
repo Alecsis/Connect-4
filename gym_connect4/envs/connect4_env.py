@@ -1,9 +1,9 @@
-from gym import spaces
+from gym import spaces, Env
 import numpy as np
 from agents.random_agent import RandomAgent
 
 
-class Connect4Env(object):
+class Connect4Env(Env):
 
     def __init__(self):
         # Board dimension
@@ -33,7 +33,6 @@ class Connect4Env(object):
         # StableBaselines throws error if these are not defined
         self.spec = None
         self.metadata = None
-        self.unwrapped = None
 
     def reset(self):
         """
@@ -97,11 +96,13 @@ class Connect4Env(object):
     def check_over(self):
         """ Check if the game is over """
         # DIRECTION NORTH EAST
-        a1 = [self.obs[::-1, :].diagonal(i) for i in range(-self.rows + 4, self.columns - 3)]
+        a1 = [self.obs[::-1, :].diagonal(i)
+              for i in range(-self.rows + 4, self.columns - 3)]
         # DIRECTION EAST
         a2 = [self.obs[i, :] for i in range(self.rows)]
         # DIRECTION SOUTH EST
-        a3 = [self.obs.diagonal(i) for i in range(-self.rows + 4, self.columns - 3)]
+        a3 = [self.obs.diagonal(i)
+              for i in range(-self.rows + 4, self.columns - 3)]
         # DIRECTION SOUTH
         a4 = [self.obs[:, j] for j in range(self.columns)]
 
