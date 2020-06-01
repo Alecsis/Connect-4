@@ -3,8 +3,9 @@ import gym
 import numpy as np
 from collections import deque
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 from tensorflow.keras.optimizers import Adam
+import tensorflow as tf
 # from scores.score_logger import ScoreLogger
 
 
@@ -29,11 +30,28 @@ class DQNSolver:
         self.action_space = action_space
         self.memory = deque(maxlen=MEMORY_SIZE)
 
+        lin = observation_space.shape[0]
+        col = observation_space.shape[1]
+
         self.model = Sequential()
-        self.model.add(Dense(24, input_shape=(observation_space,), activation="relu"))
-        self.model.add(Dense(24, activation="relu"))
-        self.model.add(Dense(self.action_space, activation="linear"))
-        self.model.compile(loss="mse", optimizer=Adam(lr=LEARNING_RATE))
+        self.model.add(Conv2D(32, kernel_size=(3, 3),
+                        activation='relu',
+                        input_shape=(lin, col, 1)))
+        self.model.add(Conv2D(64, (3, 3), activation='relu'))
+        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        self.model.add(Dropout(0.25))
+        self.model.add(Flatten())
+        self.model.add(Dense(128, activation='relu'))
+        self.model.add(Dropout(0.5))
+        self.model.add(Dense(self.action_space, activation='softmax'))
+        self.model.compile(loss=tf.keras.losses.categorical_crossentropy,
+                    optimizer=tf.keras.optimizers.Adadelta(learning_rate=LEARNING_RATE),
+                    metrics=['accuracy'])
+
+        # self.model.add(Dense(24, input_shape=(observation_space,), activation="relu"))
+        # self.model.add(Dense(24, activation="relu"))
+        # self.model.add(Dense(self.action_space, activation="linear"))
+        # self.model.compile(loss="mse", optimizer=Adam(lr=LEARNING_RATE))
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
@@ -62,21 +80,24 @@ class DQNSolver:
 def cartpole():
     env = gym.make("gym_connect4:connect4-v0")
     # score_logger = ScoreLogger("gym_connect4:connect4-v0")
-    observation_space = env.observation_space.shape[0] * env.observation_space.shape[1]
+    observation_space = env.observation_space
+    lin = observation_space.shape[0]
+    col = observation_space.shape[1]
+
     action_space = env.action_space.n
-    dqn_solver = DQNSolver(observation_space, action_space)
+    dqn_solver = DQNSolver(env.observation_space, action_space)
     run = 0
     while True:
         run += 1
         state = env.reset()
-        state = np.reshape(state, [1, observation_space])
+        state = np.reshape(state, (lin, col, 1))
         step = 0
         while True:
             step += 1
             action = dqn_solver.act(state)
             state_next, reward, terminal, info = env.step(action)
             reward = reward if not terminal else -reward
-            state_next = np.reshape(state_next, [1, observation_space])
+            state_next = np.reshape(state_next, (lin, col, 1))
             dqn_solver.remember(state, action, reward, state_next, terminal)
             state = state_next
             if terminal:

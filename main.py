@@ -12,6 +12,8 @@ if __name__ == "__main__":
     print("[.] Create Random Agent")
     agent = RandomAgent(env.action_space, env.observation_space)
 
+    print(env.action_space.n)
+
     # Init environment
     done = False
     obs = env.reset()
