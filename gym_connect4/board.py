@@ -143,7 +143,7 @@ class ConnectFour(Connect4Env):
             reward, done, info = -10, True, {}
 
         if not done:
-            action_opp = self.agent_opp.action(self.obs)
+            action_opp = self.agent_opp.action(self.obs, self.columns)
             self.play(action_opp, token=-1)
             done, token_winner = self.check_over()
             if token_winner == -1:
