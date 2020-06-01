@@ -9,7 +9,7 @@ class RandomAgent(Agent):
         return random.choice(valid_moves)
 
 class OneStepAgent(Agent):
-    def __init__(self, rows, columns, token):
+    def __init__(self, rows=6, columns=7, token=-1):
         self.rows = rows
         self.columns = columns
         self.token = token
@@ -24,10 +24,9 @@ class OneStepAgent(Agent):
             while next_board[i, move] != 0:
                 i -= 1
             next_board[i, move] = token
-            score_p = self.evaluate_heuristic(next_board)
+            total = self.evaluate_heuristic(next_board)
             next_board[i, move] = - token
-            score_n = self.evaluate_heuristic(next_board)
-            total = score_p - 100*score_n
+            print(total)
             if total > record:
                 best_move = move
                 record = total
@@ -44,8 +43,8 @@ class OneStepAgent(Agent):
                 sign = 1
                 score = max(score, abs(sum(window)))
             if adv_token in window:
-                sign = -1
-                score = min(score, -abs(sum(window)))
+                sign = -4
+                score = max(score, abs(sum(window)))
         return sign*(10**score)
 
 
