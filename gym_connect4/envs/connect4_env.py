@@ -4,22 +4,23 @@ from gym.utils import seeding
 import numpy as np
 
 
-class ConnectFour(object):
+class Connect4Env(object):
 
     def __init__(self):
 
+        # Board dimension
         self.rows = 6
         self.columns = 7
 
         # Save the board state
-        self.obs = np.zeros((self.rows, self.columns), dtype=int)
-
         # Learn about spaces here: http://gym.openai.com/docs/#spaces
-        self.action_space = spaces.Discrete(self.columns)
+        # 0: no token
+        # 1: agent1 token
+        # -1: agent2 token
+        self.observation_space = self._new_observation_space()
 
-        self.observation_space = spaces.Box(low=-1, high=1,
-                                            shape=(self.rows, self.columns),
-                                            dtype=np.int)
+        # Save the action space
+        self.action_space = spaces.Discrete(self.columns)
 
         # Tuple corresponding to the min and max possible rewards
         self.reward_range = (-10, 1)
@@ -28,19 +29,31 @@ class ConnectFour(object):
         self.spec = None
         self.metadata = None
 
-    def reset(self):
+    def reset(self) -> spaces.Box:
         """
         Reinitialize the environment to the initial state
 
         :return: state
         """
 
-        self.obs = np.zeros((self.rows, self.columns), dtype=int)
+        #self.obs = np.zeros((self.rows, self.columns), dtype=int)
+        self.observation_space = self._new_observation_space()
+        return self.observation_space
 
-    def valid(self, action) -> bool:
+    def _new_observation_space(self) -> spaces.Box:
+        """ Returns the state Box space. """
+        # Low bound is excluded
+        return spaces.Box(low=-2, high=1,
+                          shape=(self.rows, self.columns),
+                          dtype=np.int)
+
+    def is_action_valid(self, action: int) -> bool:
         """ If we have a space then the move is valid"""
-        if self.obs[0, action] == 0:
-            return True
+        try:
+            if self.observation_space[0, action] == 0:
+                return True
+        except:
+            pass
         return False
 
     def draw(self):
@@ -50,10 +63,10 @@ class ConnectFour(object):
         print("+---" * 7 + '+')
         for row in range(self.rows):
             print(
-                '| ' + ' | '.join(list(map(str, list(self.obs[row, ::])))) + ' |')
+                '| ' + ' | '.join(list(map(str, list(self.observation_space[row, ::])))) + ' |')
             print("+---" * self.columns + '+')
 
-    def step(self, action):
+    def step(self, action: int) -> (spaces.Box, int, bool, dict):
         """
         One can make a step on the environment and obtain its reaction:
         - the new state
@@ -65,16 +78,16 @@ class ConnectFour(object):
 
         # Check if agent's move is valid
 
-        is_valid = self.valid(action)
+        valid_action = self.is_action_valid(action)
 
-        if is_valid:  # Play the move
+        if valid_action:  # Play the move
 
             i = 1
 
-            while self.obs[-i, action] != 0:
+            while self.observation_space[-i, action] != 0:
                 i += 1
 
-            self.obs[-i, action] = 1
+            self.observation_space[-i, action] = 1
 
             # TODO :  -> ADD THE OPPONENT AGENT
 
@@ -91,3 +104,15 @@ class ConnectFour(object):
 
         return self.obs, reward, done, info
 
+
+if __name__ == "__main__":
+    env = Connect4Env()
+
+    print("[.] Testing Connect4Env Environment")
+    print("\t[.] Action space")
+    print("Action space:", env.action_space)
+    print("Action sample:", env.action_space.sample())
+    print("\t[.] Observation space")
+    print("Observation space:", env.observation_space)
+    print("Observation sample:\n", env.observation_space.sample())
+    print("[.] Tests done.")
