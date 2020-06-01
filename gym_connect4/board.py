@@ -131,7 +131,7 @@ class ConnectFour(Connect4Env):
         if self.is_valid(action):  # Play the move
             self.play(action, token=1)
             done, token_winner = self.check_over()
-            if done:
+            if token_winner == 1:
                 reward = 1
             else:
                 reward = 1 / 42
@@ -143,8 +143,10 @@ class ConnectFour(Connect4Env):
         if not done:
             action_opp = self.agent_opp.action(self.obs)
             self.play(action_opp, token=-1)
-            done = self.check_over()
-            if done:
+            done, token_winner = self.check_over()
+            if token_winner == -1:
                 reward = -1
+            elif done:
+                reward = 0
 
         return self.obs, reward, done, info
