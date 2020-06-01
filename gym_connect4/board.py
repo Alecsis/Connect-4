@@ -1,13 +1,18 @@
 import numpy as np
 from gym import spaces
+from gym_connect4.envs.connect4_env import Connect4Env
 
 
-class ConnectFour(object):
+class ConnectFour(Connect4Env):
 
-    def __init__(self):
-
+    def __init__(self, agent_opp):
+        super().__init__()
+        self.agent_opp = agent_opp
         self.rows = 6
         self.columns = 7
+
+        # nb_empty indicate the number of available space per column
+        self.nb_empty = [self.rows] * self.columns
 
         # Save the board state
         self.obs = np.zeros((self.rows, self.columns), dtype=int)
@@ -36,13 +41,14 @@ class ConnectFour(object):
 
         self.obs = np.zeros((self.rows, self.columns), dtype=int)
 
-    def valid(self, action) -> bool:
-        """ If we have a space then the move is valid"""
-        if self.obs[0, action] == 0:
-            return True
-        return False
+    def set_opponent(self, agent):
+        self.agent_opp = agent
 
-    def draw(self):
+    def is_valid(self, action) -> bool:
+        """ If we have a space then the move is valid"""
+        return self.nb_empty[action] != 0
+
+    def render(self):
         """
         Visualize in the console or graphically the current state
         """
@@ -50,6 +56,65 @@ class ConnectFour(object):
         for row in range(self.rows):
             print('| ' + ' | '.join(list(map(str, list(self.obs[row, ::])))) + ' |')
             print("+---" * self.columns + '+')
+
+    def check_line(self, align):
+        no_token = 0
+        token_play1 = 1
+        token_play2 = -1
+        count_play1, count_play2 = 0, 0
+        for token in align:
+            if token == no_token:
+                count_play1, count_play2 = 0, 0
+            elif token == token_play1:
+                count_play1 += 1
+                count_play2 = 0
+            else:
+                count_play2 += 1
+                count_play1 = 0
+            if count_play2 == 4:
+                return True, token_play2
+            if count_play1 == 4:
+                return True, token_play1
+        return False, no_token
+
+    def check_drow(self):
+        """
+        Check if the games ended by a drow
+        :return: Bool
+        """
+        no_token = 0
+        if no_token in self.obs:
+            return True
+        else:
+            return False
+
+    def check_over(self):
+        """ Check if the game is over """
+        # DIRECTION NORTH EAST
+        a1 = [self.obs[::-1, :].diagonal(i) for i in range(-self.rows + 4, self.columns - 3)]
+
+        # DIRECTION EAST
+        a2 = [self.obs[i, :] for i in range(self.rows)]
+
+        # DIRECTION SOUTH EST
+        a3 = [self.obs.diagonal(i) for i in range(-self.rows + 4, self.columns - 3)]
+
+        # DIRECTION SOUTH
+        a4 = [self.obs[:, j] for j in range(self.columns)]
+
+        aligns = a1 + a2 + a3 + a4
+
+        done, token_winner = any([self.check_line(align) for align in aligns])
+
+        if not done:
+            done = self.check_drow()
+        return done, token_winner
+
+    def play(self, action, token):
+        if self.is_valid(action):
+            self.nb_empty[action] -= 1
+            rowidx = self.nb_empty[action]
+            self.obs[rowidx, action] = token
 
     def step(self, action):
         """
@@ -63,30 +128,23 @@ class ConnectFour(object):
 
         # Check if agent's move is valid
 
-        is_valid = self.valid(action)
-
-        if is_valid:  # Play the move
-
-            i = 1
-
-            while self.obs[-i, action] != 0:
-                i += 1
-
-            self.obs[-i, action] = 1
-
-            # TODO :  -> ADD THE OPPONENT AGENT
-
-            # TODO : COMPUTE THE REWARD AND IF THE GAME IS OVER
-            
-            reward = 1 / 42
-
-            done = False
-
+        if self.is_valid(action):  # Play the move
+            self.play(action, token=1)
+            done, token_winner = self.check_over()
+            if done:
+                reward = 1
+            else:
+                reward = 1 / 42
             info = {}
 
         else:  # End the game and penalize agent
             reward, done, info = -10, True, {}
 
+        if not done:
+            action_opp = self.agent_opp.action(self.obs)
+            self.play(action_opp, token=-1)
+            done = self.check_over()
+            if done:
+                reward = -1
+
         return self.obs, reward, done, info
-
-
