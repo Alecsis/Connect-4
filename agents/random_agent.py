@@ -4,7 +4,7 @@ import numpy as np
 
 
 class RandomAgent(Agent):
-    def get_action(self, obs):
+    def get_action(self, obs) -> int:
         return random.choice(self.get_valid_actions(obs))
 
     def get_valid_actions(self, obs: np.ndarray) -> list:
