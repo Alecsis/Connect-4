@@ -133,6 +133,7 @@ class Connect4Env(Env):
         """
 
         # Check if agent's move is valid
+        info = {}
         if self.is_valid(action) and not self.done:  # Play the move
             self.play(action, token=1)
             done, token_winner = self.check_over()
@@ -142,7 +143,6 @@ class Connect4Env(Env):
                 reward = 0
             else:
                 reward = 1 / 42
-            info = {}
         else:  # End the game and penalize agent
             reward, done, info = -10, True, {}
 

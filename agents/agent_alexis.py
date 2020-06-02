@@ -6,7 +6,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
-# from scores.score_logger import ScoreLogger
 
 
 ENV_NAME = "gym_connect4:connect4-v0"
@@ -91,36 +90,39 @@ class DQNSolver:
 
 def cartpole():
     env = gym.make(ENV_NAME)
-    # score_logger = ScoreLogger("gym_connect4:connect4-v0")
     observation_space = env.observation_space
     lin = observation_space.shape[0]
     col = observation_space.shape[1]
-
+    logs = []
     action_space = env.action_space.n
     dqn_solver = DQNSolver(env.observation_space, action_space)
     run = 0
-    while True:
-        run += 1
-        state = env.reset()
-        # state = np.reshape(state, (1, lin * col)) # Linear model
-        state = np.reshape(state, (1, lin, col, 1)) # Conv2D model
-        step = 0
+    try:
         while True:
-            step += 1
-            action = dqn_solver.act(state)
-            state_next, reward, terminal, info = env.step(action)
-            reward = reward if not terminal else -reward
-            # state_next = np.reshape(state_next, (1, lin * col)) # Linear model
-            state_next = np.reshape(state_next, (1, lin, col, 1)) # Conv2D model
-            dqn_solver.remember(state, action, reward, state_next, terminal)
-            state = state_next
-            if terminal:
-                print("Run: " + str(run) + ", exploration: " + str(dqn_solver.exploration_rate) + ", score: " + str(step))
-                # score_logger.add_score(step, run)
-                break
-            dqn_solver.experience_replay()
-        #env.render()
-
+            run += 1
+            state = env.reset()
+            # state = np.reshape(state, (1, lin * col)) # Linear model
+            state = np.reshape(state, (1, lin, col, 1)) # Conv2D model
+            step = 0
+            while True:
+                step += 1
+                action = dqn_solver.act(state)
+                state_next, reward, terminal, info = env.step(action)
+                # state_next = np.reshape(state_next, (1, lin * col)) # Linear model
+                state_next = np.reshape(state_next, (1, lin, col, 1)) # Conv2D model
+                dqn_solver.remember(state, action, reward, state_next, terminal)
+                state = state_next
+                if terminal:
+                    print("Run: " + str(run) + ", exploration: " + str(dqn_solver.exploration_rate) + ", score: " + str(step))
+                    print("Reward: ", reward)
+                    print(info)
+                    logs.append("Run: {}, exploration: {}, {}, {}\n".format(str(run), str(dqn_solver.exploration_rate), reward, info))
+                    # env.render()
+                    break
+                dqn_solver.experience_replay()
+    except KeyboardInterrupt:
+        with open("alexis/logs.txt", "w+") as f:
+            f.writelines(logs)
 
 if __name__ == "__main__":
     cartpole()
