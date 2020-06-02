@@ -9,7 +9,7 @@ import tensorflow as tf
 # from scores.score_logger import ScoreLogger
 
 
-ENV_NAME = "CartPole-v1"
+ENV_NAME = "gym_connect4:connect4-v0"
 
 GAMMA = 0.95
 LEARNING_RATE = 0.001
@@ -33,6 +33,7 @@ class DQNSolver:
         lin = observation_space.shape[0]
         col = observation_space.shape[1]
 
+        # Conv2D model
         self.model = Sequential()
         self.model.add(Conv2D(32, kernel_size=(3, 3),
                         activation='relu',
@@ -48,7 +49,9 @@ class DQNSolver:
                     optimizer=tf.keras.optimizers.Adadelta(learning_rate=LEARNING_RATE),
                     metrics=['accuracy'])
 
-        # self.model.add(Dense(24, input_shape=(observation_space,), activation="relu"))
+        # Linear model
+        # self.model = Sequential()
+        # self.model.add(Dense(24, input_shape=(lin*col,), activation="relu"))
         # self.model.add(Dense(24, activation="relu"))
         # self.model.add(Dense(self.action_space, activation="linear"))
         # self.model.compile(loss="mse", optimizer=Adam(lr=LEARNING_RATE))
@@ -57,28 +60,37 @@ class DQNSolver:
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state):
+        # At the beginning, high probability of random play
+        # i.o. to build some dataset
         if np.random.rand() < self.exploration_rate:
             return random.randrange(self.action_space)
+        # then, let the model predict
         q_values = self.model.predict(state)
         return np.argmax(q_values[0])
 
     def experience_replay(self):
+        # Stack batch of memory first
         if len(self.memory) < BATCH_SIZE:
             return
+        # When the memory is big enough, take a sample from it
         batch = random.sample(self.memory, BATCH_SIZE)
+        # For each state/next_state/reward combination:
         for state, action, reward, state_next, terminal in batch:
             q_update = reward
             if not terminal:
+                pred_next = self.model.predict(state_next)
                 q_update = (reward + GAMMA * np.amax(self.model.predict(state_next)[0]))
             q_values = self.model.predict(state)
             q_values[0][action] = q_update
+            # Train model
             self.model.fit(state, q_values, verbose=0)
+        # Decay exploration to allow model to make some predictions
         self.exploration_rate *= EXPLORATION_DECAY
         self.exploration_rate = max(EXPLORATION_MIN, self.exploration_rate)
 
 
 def cartpole():
-    env = gym.make("gym_connect4:connect4-v0")
+    env = gym.make(ENV_NAME)
     # score_logger = ScoreLogger("gym_connect4:connect4-v0")
     observation_space = env.observation_space
     lin = observation_space.shape[0]
@@ -90,14 +102,16 @@ def cartpole():
     while True:
         run += 1
         state = env.reset()
-        state = np.reshape(state, (lin, col, 1))
+        # state = np.reshape(state, (1, lin * col)) # Linear model
+        state = np.reshape(state, (1, lin, col, 1)) # Conv2D model
         step = 0
         while True:
             step += 1
             action = dqn_solver.act(state)
             state_next, reward, terminal, info = env.step(action)
             reward = reward if not terminal else -reward
-            state_next = np.reshape(state_next, (lin, col, 1))
+            # state_next = np.reshape(state_next, (1, lin * col)) # Linear model
+            state_next = np.reshape(state_next, (1, lin, col, 1)) # Conv2D model
             dqn_solver.remember(state, action, reward, state_next, terminal)
             state = state_next
             if terminal:
