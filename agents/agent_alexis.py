@@ -6,6 +6,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 
 ENV_NAME = "gym_connect4:connect4-v0"
@@ -88,12 +89,13 @@ class DQNSolver:
         self.exploration_rate = max(EXPLORATION_MIN, self.exploration_rate)
 
 
-def cartpole():
+def main():
     env = gym.make(ENV_NAME)
     observation_space = env.observation_space
     lin = observation_space.shape[0]
     col = observation_space.shape[1]
     logs = []
+    rewards = []
     action_space = env.action_space.n
     dqn_solver = DQNSolver(env.observation_space, action_space)
     run = 0
@@ -116,13 +118,19 @@ def cartpole():
                     print("Run: " + str(run) + ", exploration: " + str(dqn_solver.exploration_rate) + ", score: " + str(step))
                     print("Reward: ", reward)
                     print(info)
+                    rewards.append(max(reward, -1))
                     logs.append("Run: {}, exploration: {}, {}, {}\n".format(str(run), str(dqn_solver.exploration_rate), reward, info))
-                    # env.render()
+                    env.render()
                     break
                 dqn_solver.experience_replay()
     except KeyboardInterrupt:
         with open("alexis/logs.txt", "w+") as f:
             f.writelines(logs)
+        plt.title("Rewards evolution")
+        plt.xlabel("Run")
+        plt.ylabel("Reward")
+        plt.plot(rewards)
+        plt.show()
 
 if __name__ == "__main__":
-    cartpole()
+    main()
