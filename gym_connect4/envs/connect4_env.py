@@ -3,32 +3,54 @@ import numpy as np
 from agents.random_agent import RandomAgent
 
 
+class InvalidAction(Exception):
+    pass
+
+
+class ColumnIsFull(Exception):
+    pass
+
+
 class Connect4Env(Env):
 
     def __init__(self):
+
         # Board dimension
-        self.rows = 6
-        self.columns = 7
+        self.nb_rows = 6
+        self.nb_columns = 7
         self.done = False
 
         # nb_empty indicate the number of available space per column
-        self.nb_empty = [self.rows] * self.columns
+        self.nb_empty = [self.nb_rows] * self.nb_columns
 
         # Save the board state
-        self.obs = np.zeros((self.rows, self.columns), dtype=int)
+        self.state = np.zeros((self.nb_rows, self.nb_columns), dtype=int)
 
         # Learn about spaces here: http://gym.openai.com/docs/#spaces
-        self.action_space = spaces.Discrete(self.columns)
-
+        self.action_space = spaces.Discrete(self.nb_columns)
         self.observation_space = spaces.Box(low=-1, high=1,
-                                            shape=(self.rows, self.columns),
+                                            shape=(self.nb_rows,
+                                                   self.nb_columns),
                                             dtype=np.int)
 
         # Tuple corresponding to the min and max possible rewards
         self.reward_range = (-10, 1)
+        self.rewards = {
+            "invalid": -10,
+            "valid":    1/42,
+            "won":      1,
+            "lost": -1,
+            "draw":     0,
+        }
+
+        # Render properties
+        self.render_tokens = {}
+        self.render_tokens[-1] = 'x'
+        self.render_tokens[1] = 'o'
+        self.render_tokens[0] = ' '
 
         # Random agent
-        self.agent_opp = RandomAgent(self.action_space, self.observation_space)
+        self.opponent = RandomAgent(self.action_space, self.state)
 
         # StableBaselines throws error if these are not defined
         self.spec = None
@@ -40,15 +62,12 @@ class Connect4Env(Env):
 
         :return: state
         """
-        self.obs = np.zeros((self.rows, self.columns), dtype=int)
-        self.nb_empty = [self.rows] * self.columns
+        self.state = np.zeros((self.nb_rows, self.nb_columns), dtype=int)
+        self.nb_empty = [self.nb_rows] * self.nb_columns
         self.done = False
-        return self.obs
+        return self.state
 
-    def set_opponent(self, agent):
-        self.agent_opp = agent
-
-    def is_valid(self, action) -> bool:
+    def is_action_valid(self, action) -> bool:
         """ If we have a space then the move is valid"""
         return self.nb_empty[action] != 0
 
@@ -56,11 +75,11 @@ class Connect4Env(Env):
         """
         Visualize in the console or graphically the current state
         """
-        print("+---" * self.columns + '+')
-        for row in range(self.rows):
-            print('| ' + ' | '.join(list(map(lambda x: '.' if x == 0 else ('o' if x == 1 else 'x'),
-                                             list(self.obs[row, ::])))) + ' |')
-            print("+---" * self.columns + '+')
+        print("+---" * self.nb_columns + '+')
+        for row in range(self.nb_rows):
+            print('| ' + ' | '.join(list(map(lambda x: self.render_tokens[x],
+                                             list(self.state[row, ::])))) + ' |')
+            print("+---" * self.nb_columns + '+')
 
     def check_line(self, align):
         no_token = 0
@@ -82,45 +101,41 @@ class Connect4Env(Env):
                 return True, token_play1
         return False, no_token
 
-    def check_draw(self):
+    def is_boad_full(self) -> bool:
         """
-        Check if the games ended by a drow
+        Check if the board is full
         :return: Bool
         """
-        no_token = 0
-        if no_token in self.obs:
-            return False
-        else:
-            return True
+        empty_slot_id = 0
+        board_full = not (empty_slot_id in self.state)
+        return board_full
 
-    def check_over(self):
+    def has_player_won(self) -> bool:
         """ Check if the game is over """
         # DIRECTION NORTH EAST
-        a1 = [self.obs[::-1, :].diagonal(i)
-              for i in range(-self.rows + 4, self.columns - 3)]
+        a1 = [self.state[::-1, :].diagonal(i)
+              for i in range(-self.nb_rows + 4, self.nb_columns - 3)]
         # DIRECTION EAST
-        a2 = [self.obs[i, :] for i in range(self.rows)]
+        a2 = [self.state[i, :] for i in range(self.nb_rows)]
         # DIRECTION SOUTH EST
-        a3 = [self.obs.diagonal(i)
-              for i in range(-self.rows + 4, self.columns - 3)]
+        a3 = [self.state.diagonal(i)
+              for i in range(-self.nb_rows + 4, self.nb_columns - 3)]
         # DIRECTION SOUTH
-        a4 = [self.obs[:, j] for j in range(self.columns)]
+        a4 = [self.state[:, j] for j in range(self.nb_columns)]
 
         aligns = a1 + a2 + a3 + a4
         done = any([self.check_line(align)[0] for align in aligns])
-        if done:
-            token_winner = 1
-        else:
-            done = self.check_draw()
-            token_winner = 0
+        return done
 
-        return done, token_winner
+    def emplace_token(self, column, token):
+        # Check if column is already full
+        if self.nb_empty[column] <= 0:
+            raise ColumnIsFull
 
-    def play(self, action, token):
-        if self.is_valid(action):
-            self.nb_empty[action] -= 1
-            rowidx = self.nb_empty[action]
-            self.obs[rowidx, action] = token
+        # Add the token
+        self.nb_empty[column] -= 1
+        row = self.nb_empty[column]
+        self.state[row, column] = token
 
     def step(self, action: int) -> (np.ndarray, int, bool, dict):
         """
@@ -132,31 +147,62 @@ class Connect4Env(Env):
         :return: state, reward, game_over, info
         """
 
-        # Check if agent's move is valid
+        # Init return values
+        reward = self.rewards["valid"]
+        done = False
         info = {}
-        if self.is_valid(action) and not self.done:  # Play the move
-            self.play(action, token=1)
-            done, token_winner = self.check_over()
-            if token_winner == 1:
-                reward = 1
-            elif done:
-                reward = 0
-            else:
-                reward = 1 / 42
-        else:  # End the game and penalize agent
-            reward, done, info = -10, True, {}
 
-        if not done:
-            action_opp = self.agent_opp.get_action(self.obs)
-            self.play(action_opp, token=-1)
-            done, token_winner = self.check_over()
-            if token_winner == -1:
-                reward = -1
-            elif done:
-                reward = 0
+        # Let first agent make a move
+        try:
+            self.emplace_token(action, token=1)
+        except ColumnIsFull:
+            reward = self.rewards["invalid"]
+            done = True
+            info = {"Invalid Action"}
+            return self.state, reward, done, info
+
+        # Check win condition
+        if self.has_player_won():
+            reward = self.rewards["won"]
+            done = True
+            info = {"Won"}
+            return self.state, reward, done, info
+
+        # Check draw condition
+        if self.is_boad_full():
+            reward = self.rewards["draw"]
+            done = True
+            info = {"Draw"}
+            return self.state, reward, done, info
+
+        # Let the opponent agent make a move
+        try:
+            opp_action = self.opponent.get_action(self.state)
+            self.emplace_token(opp_action, token=-1)
+        except ColumnIsFull:
+            # Opponent mistake, should not happen and we don't want to
+            # reward our trained agent for this
+            reward = self.rewards["valid"]
+            done = True
+            info = {"Opponent Invalid Action"}
+            return self.state, reward, done, info
+
+        # Check win condition
+        if self.has_player_won():
+            reward = self.rewards["lost"]
+            done = True
+            info = {"Lost"}
+            return self.state, reward, done, info
+
+        # Check draw condition
+        if self.is_boad_full():
+            reward = self.rewards["draw"]
+            done = True
+            info = {"Draw"}
+            return self.state, reward, done, info
 
         self.done = done
-        return self.obs, reward, done, info
+        return self.state, reward, done, info
 
 
 if __name__ == '__main__':
@@ -168,4 +214,5 @@ if __name__ == '__main__':
     # Sample actions until game over
     while not done:
         obs, reward, done, info = env.step(env.action_space.sample())
-    env.render()
+        print(reward, done, info)
+        env.render()
