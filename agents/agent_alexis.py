@@ -36,8 +36,8 @@ class DQNSolver:
         # Conv2D model
         self.model = Sequential()
         self.model.add(Conv2D(32, kernel_size=(3, 3),
-                        activation='relu',
-                        input_shape=(lin, col, 1)))
+                              activation='relu',
+                              input_shape=(lin, col, 1)))
         self.model.add(Conv2D(64, (3, 3), activation='relu'))
         self.model.add(MaxPooling2D(pool_size=(2, 2)))
         self.model.add(Dropout(0.25))
@@ -46,8 +46,9 @@ class DQNSolver:
         self.model.add(Dropout(0.5))
         self.model.add(Dense(self.action_space, activation='softmax'))
         self.model.compile(loss=tf.keras.losses.categorical_crossentropy,
-                    optimizer=tf.keras.optimizers.Adadelta(learning_rate=LEARNING_RATE),
-                    metrics=['accuracy'])
+                           optimizer=tf.keras.optimizers.Adadelta(
+                               learning_rate=LEARNING_RATE),
+                           metrics=['accuracy'])
 
         # Linear model
         # self.model = Sequential()
@@ -79,7 +80,8 @@ class DQNSolver:
             q_update = reward
             if not terminal:
                 pred_next = self.model.predict(state_next)
-                q_update = (reward + GAMMA * np.amax(self.model.predict(state_next)[0]))
+                q_update = (reward + GAMMA *
+                            np.amax(self.model.predict(state_next)[0]))
             q_values = self.model.predict(state)
             q_values[0][action] = q_update
             # Train model
@@ -104,22 +106,26 @@ def main():
             run += 1
             state = env.reset()
             # state = np.reshape(state, (1, lin * col)) # Linear model
-            state = np.reshape(state, (1, lin, col, 1)) # Conv2D model
+            state = np.reshape(state, (1, lin, col, 1))  # Conv2D model
             step = 0
             while True:
                 step += 1
                 action = dqn_solver.act(state)
                 state_next, reward, terminal, info = env.step(action)
                 # state_next = np.reshape(state_next, (1, lin * col)) # Linear model
-                state_next = np.reshape(state_next, (1, lin, col, 1)) # Conv2D model
-                dqn_solver.remember(state, action, reward, state_next, terminal)
+                state_next = np.reshape(
+                    state_next, (1, lin, col, 1))  # Conv2D model
+                dqn_solver.remember(state, action, reward,
+                                    state_next, terminal)
                 state = state_next
                 if terminal:
-                    print("Run: " + str(run) + ", exploration: " + str(dqn_solver.exploration_rate) + ", score: " + str(step))
+                    print("Run: " + str(run) + ", exploration: " +
+                          str(dqn_solver.exploration_rate) + ", score: " + str(step))
                     print("Reward: ", reward)
                     print(info)
                     rewards.append(max(reward, -1))
-                    logs.append("Run: {}, exploration: {}, {}, {}\n".format(str(run), str(dqn_solver.exploration_rate), reward, info))
+                    logs.append("Run: {}, exploration: {}, {}, {}\n".format(
+                        str(run), str(dqn_solver.exploration_rate), reward, info))
                     env.render()
                     break
                 dqn_solver.experience_replay()
@@ -131,6 +137,7 @@ def main():
         plt.ylabel("Reward")
         plt.plot(rewards)
         plt.show()
+
 
 if __name__ == "__main__":
     main()
