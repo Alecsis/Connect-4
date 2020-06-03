@@ -1,3 +1,6 @@
 numpy~=1.18.3
 gym~=0.17.2
 setuptools~=41.2.0
+matplotlib~=3.2.1
+torch~=1.5.0+cu101
+tqdm~=4.45.0
